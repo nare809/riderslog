@@ -34,6 +34,7 @@ data/*-merged.json
 # Logs
 logs/
 *.log
+pm2-*.log
 
 # Testing
 coverage/
