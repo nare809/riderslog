@@ -1,12 +1,13 @@
 module.exports = {
     apps: [{
         name: 'cars-api',
-        script: 'dist/main.js',
+        script: 'dist/src/main.js',
         instances: 1,
         exec_mode: 'cluster',
         autorestart: true,
         watch: false,
         max_memory_restart: '500M',
+        env_file: '.env',  // Load environment variables from .env file
         env: {
             NODE_ENV: 'production',
             PORT: 3000

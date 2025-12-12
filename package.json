@@ -26,6 +26,7 @@
     "@prisma/client": "^5.10.0",
     "axios": "^1.13.2",
     "cheerio": "^1.1.2",
+    "dotenv": "^16.3.1",
     "prisma": "^5.10.0",
     "puppeteer": "^24.32.0",
     "reflect-metadata": "^0.2.2",
