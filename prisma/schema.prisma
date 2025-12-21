@@ -1,0 +1,56 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Brand {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique // e.g. "Tata"
+  slug      String   @unique // e.g. "tata"
+  logoUrl      String?  // S3 URL for brand logo
+  logoUrlDark  String?  // Dark mode specific logo URL
+  createdAt DateTime @default(now())
+  
+  models    Model[]
+}
+
+model Model {
+  id           Int      @id @default(autoincrement())
+  name         String   // e.g. "Nexon"
+  slug         String   // e.g. "tata-nexon"
+  type         String?  // e.g. "SUV"
+  mainImageUrl String?  // Primary S3 image URL
+  images       Json?    // Additional view images { "left": "url", "right": "url", "interior": "url" }
+  
+  brandId   Int
+  brand     Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  
+  variants  Variant[]
+
+  @@unique([brandId, slug]) // Prevents duplicate models for the same brand
+}
+
+model Variant {
+  id              Int      @id @default(autoincrement())
+  name            String   // e.g. "Nexon Smart"
+  
+  // Searchable Columns
+  priceExShowroom Float    @default(0)
+  fuelType        String   // Petrol, Diesel, CNG
+  transmission    String   // Manual, Automatic
+
+  // Rich Data (stored as JSON)
+  specs           Json     // { "engine": "1199cc", "mileage": "17.44" }
+  colors          Json     // [ { "name": "Red", "image": "url" } ]
+
+  modelId         Int
+  model           Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now())
+}
