@@ -36,9 +36,28 @@ API available at: `http://localhost:3000/api`
 
 ## 🔧 Deployment Commands
 
+### Standard Deployment
 - `npm run build`: Compile the application
 - `npm run start:prod`: Start the optimized production server
-- `npm run db:check`: Health check for database connection (Use this in your deployment pipeline)
+- `npm run db:check`: Health check for database connection
+
+### PM2 (Recommended for Production)
+This project includes an `ecosystem.config.js` for PM2 process management.
+
+```bash
+# 1. Install PM2 globally
+npm install -g pm2
+
+# 2. Build the project
+npm run build
+
+# 3. Start with PM2
+pm2 start ecosystem.config.js
+
+# 4. Save configuration (to restart on reboot)
+pm2 save
+pm2 startup
+```
 
 ---
 
