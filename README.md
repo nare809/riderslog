@@ -20,7 +20,7 @@ npm run build
 npm run start:prod
 ```
 
-API available at: `http://localhost:3000/api`
+API available at: `http://localhost:3000/cars`
 
 ---
 
