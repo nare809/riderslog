@@ -23,7 +23,16 @@ export class VehiclesService {
     // 2. Get all models
     async getAllModels() {
         return await prisma.model.findMany({
-            include: { brand: true },
+            include: {
+                brand: true,
+                variants: {
+                    select: {
+                        priceExShowroom: true,
+                        fuelType: true,
+                        transmission: true
+                    }
+                }
+            },
         });
     }
 

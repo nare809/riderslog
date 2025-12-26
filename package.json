@@ -11,7 +11,8 @@
     "start:prod": "node dist/src/main",
     "seed": "ts-node prisma/seed.ts",
     "db:check": "ts-node scripts/check-db.ts",
-    "seed:model": "ts-node prisma/seed-model.ts"
+    "seed:model": "ts-node prisma/seed-model.ts",
+    "sync:data": "ts-node -r dotenv/config scripts/sync-scraped-data.ts"
   },
   "keywords": [],
   "author": "",
@@ -33,7 +34,7 @@
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.14",
-    "@types/node": "^24.10.1",
+    "@types/node": "^24.10.4",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }
