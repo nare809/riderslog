@@ -29,7 +29,8 @@ export class VehiclesService {
                     select: {
                         priceExShowroom: true,
                         fuelType: true,
-                        transmission: true
+                        transmission: true,
+                        specs: true
                     }
                 }
             },
