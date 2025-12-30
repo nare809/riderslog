@@ -1,117 +1,142 @@
-
 import { PrismaClient } from '@prisma/client';
-import * as fs from 'fs';
+import * as fs from 'fs-extra';
 import * as path from 'path';
 
 const prisma = new PrismaClient();
-
-// Configuration
-const SCRAPER_DATA_DIR = path.join(__dirname, '../../scraper/data');
+const DATA_DIR = path.join(__dirname, '../../scraper/data');
 
 async function main() {
-    console.log('🚀 Starting sync from scraped data to database...');
+    console.log('🔄 Starting Data Sync...');
 
-    // Debug: Check database URL
-    const dbUrl = process.env.DATABASE_URL;
-    if (!dbUrl) {
-        console.error('❌ DATABASE_URL is missing in environment variables!');
-        process.exit(1);
-    }
-    // console.log(`🔌 Database URL loaded: ${dbUrl.replace(/:[^:@]*@/, ':****@')}`);
+    // Ensure 'Tata' brand exists (since many cars are Tata)
+    // In a real scenario, we should upsert brands dynamically, but the scraper JSON has brand info.
 
-    if (!fs.existsSync(SCRAPER_DATA_DIR)) {
-        console.error(`❌ Scraper data directory not found at: ${SCRAPER_DATA_DIR}`);
-        process.exit(1);
-    }
+    const files = await fs.readdir(DATA_DIR);
+    const jsonFiles = files.filter(f => f.endsWith('.json'));
 
-    const files = fs.readdirSync(SCRAPER_DATA_DIR).filter(f => f.endsWith('.json'));
-    console.log(`Found ${files.length} JSON files to process.`);
+    console.log(`📂 Found ${jsonFiles.length} JSON files.`);
 
-    let processedCount = 0;
-    let errorCount = 0;
+    // Use a map to cache Brand IDs to avoid repeated DB calls
+    const brandCache = new Map<string, number>();
 
-    for (const file of files) {
-        const filePath = path.join(SCRAPER_DATA_DIR, file);
+    for (const file of jsonFiles) {
+        const filePath = path.join(DATA_DIR, file);
 
         try {
-            const fileContent = fs.readFileSync(filePath, 'utf-8');
-            const data = JSON.parse(fileContent);
+            const data = await fs.readJson(filePath);
 
-            // 1. Sync Brand
-            const brand = await prisma.brand.upsert({
-                where: { slug: data.brand_slug },
-                update: {
-                    name: data.brand_name,
-                    // Optional: Update logos if available in JSON, else keep existing
-                },
-                create: {
-                    name: data.brand_name,
-                    slug: data.brand_slug,
-                },
-            });
+            // Basic validation
+            if (!data.brand || !data.name || !data.slug) {
+                console.warn(`⚠️ Skipping ${file}: Missing brand, name, or slug.`);
+                continue;
+            }
 
-            // 2. Sync Model
+            const brandSlug = data.brand.slug;
+
+            // 1. Upsert Brand
+            let brandId = brandCache.get(brandSlug);
+
+            if (!brandId) {
+                const brand = await prisma.brand.upsert({
+                    where: { slug: brandSlug },
+                    update: {
+                        name: data.brand.name,
+                        logoUrl: data.brand.logoUrl,
+                        logoUrlDark: data.brand.logoUrlDark
+                    },
+                    create: {
+                        name: data.brand.name,
+                        slug: brandSlug,
+                        logoUrl: data.brand.logoUrl,
+                        logoUrlDark: data.brand.logoUrlDark
+                    }
+                });
+                brandId = brand.id;
+                brandCache.set(brandSlug, brandId);
+                // console.log(`✅ Brand Synced: ${brand.name}`);
+            }
+
+            // 2. Upsert Model
+            // Clean up images. If it's an array (from new API), store directly. 
+            // Schema expects `images` as Json? or String? 
+            // Schema: `images Json?`
+
             const model = await prisma.model.upsert({
                 where: {
                     brandId_slug: {
-                        brandId: brand.id,
-                        slug: data.model_slug
+                        brandId: brandId,
+                        slug: data.slug
                     }
                 },
                 update: {
-                    name: data.model_name,
+                    name: data.name,
                     type: data.type,
+                    mainImageUrl: data.mainImageUrl,
+                    images: data.images // Pass the whole array/object
                 },
                 create: {
-                    name: data.model_name,
-                    slug: data.model_slug,
+                    name: data.name,
+                    slug: data.slug,
                     type: data.type,
-                    brandId: brand.id,
+                    mainImageUrl: data.mainImageUrl,
+                    images: data.images,
+                    brandId: brandId
                 }
             });
 
             // 3. Sync Variants
-            // Strategy: Clear existing variants for this model and re-insert.
-            // This ensures we don't have stale variants (e.g. if a name changed or was removed).
-            // This mirrors the reliable logic in seed.ts.
-            await prisma.variant.deleteMany({
-                where: { modelId: model.id }
-            });
-
             if (data.variants && Array.isArray(data.variants)) {
-                const variantsData = data.variants.map((v: any) => ({
-                    name: v.name,
-                    priceExShowroom: v.priceExShowroom || 0,
-                    fuelType: v.fuelType || 'Unknown',
-                    transmission: v.transmission || 'Unknown',
-                    specs: v.specs || {},
-                    colors: v.colors || [],
-                    modelId: model.id
-                }));
+                for (const v of data.variants) {
+                    // Unique constraint on Variant? 
+                    // The schema doesn't have a unique constraint on Variant name/slug yet, just ID.
+                    // We should probably try to find by name + modelId to avoid duplicates.
 
-                if (variantsData.length > 0) {
-                    await prisma.variant.createMany({
-                        data: variantsData
+                    const existingVariant = await prisma.variant.findFirst({
+                        where: {
+                            modelId: model.id,
+                            name: v.name
+                        }
                     });
+
+                    if (existingVariant) {
+                        await prisma.variant.update({
+                            where: { id: existingVariant.id },
+                            data: {
+                                priceExShowroom: v.priceExShowroom || 0,
+                                fuelType: v.fuelType || 'Unknown',
+                                transmission: v.transmission || 'Manual',
+                                specs: v.specs || {},
+                                colors: v.colors || []
+                            }
+                        });
+                    } else {
+                        await prisma.variant.create({
+                            data: {
+                                name: v.name,
+                                priceExShowroom: v.priceExShowroom || 0,
+                                fuelType: v.fuelType || 'Unknown',
+                                transmission: v.transmission || 'Manual',
+                                specs: v.specs || {},
+                                colors: v.colors || [],
+                                modelId: model.id
+                            }
+                        });
+                    }
                 }
             }
 
-            console.log(`✅ Synced: ${data.model_name} (${data.variants?.length || 0} variants)`);
-            processedCount++;
+            process.stdout.write('.'); // Progress dot
 
         } catch (err) {
-            console.error(`❌ Error processing ${file}:`, err);
-            errorCount++;
+            console.error(`\n❌ Error processing ${file}:`, err.message);
         }
     }
 
-    console.log(`\n🎉 Sync Complete!`);
-    console.log(`Processed Models: ${processedCount}`);
-    console.log(`Errors: ${errorCount}`);
+    console.log('\n✨ Data Sync Complete!');
 }
 
 main()
-    .catch((e) => {
+    .catch(e => {
         console.error(e);
         process.exit(1);
     })

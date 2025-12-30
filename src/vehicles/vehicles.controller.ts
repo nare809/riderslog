@@ -16,6 +16,40 @@ export class VehiclesController {
         return this.vehiclesService.getBrandBySlug(slug);
     }
 
+    @Get('brands/:slug/cars')
+    getBrandCars(
+        @Param('slug') slug: string,
+        @Query('priceMin') priceMin?: string,
+        @Query('priceMax') priceMax?: string,
+        @Query('sortBy') sortBy?: string,
+        @Query('bodyTypes') bodyTypes?: string,
+        @Query('fuelTypes') fuelTypes?: string,
+        @Query('transmissions') transmissions?: string,
+        @Query('seats') seats?: string,
+        @Query('mileage') mileage?: string,
+        @Query('electricRange') electricRange?: string,
+        @Query('driveTypes') driveTypes?: string,
+        @Query('safetyRating') safetyRating?: string,
+    ) {
+        // Parse comma-separated strings into arrays
+        const parseArray = (str?: string) => str ? str.split(',').filter(Boolean) : undefined;
+
+        return this.vehiclesService.getBrandCars(
+            slug,
+            priceMin ? Number(priceMin) : undefined,
+            priceMax ? Number(priceMax) : undefined,
+            sortBy,
+            parseArray(bodyTypes),
+            parseArray(fuelTypes),
+            parseArray(transmissions),
+            parseArray(seats),
+            mileage,
+            electricRange,
+            parseArray(driveTypes),
+            safetyRating
+        );
+    }
+
 
     // 1. Recommendation Endpoint (Must come BEFORE :slug)
     // Usage: /vehicles/recommend?min=500000&max=1500000&fuel=Diesel

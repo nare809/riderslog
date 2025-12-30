@@ -12,7 +12,8 @@
     "seed": "ts-node prisma/seed.ts",
     "db:check": "ts-node scripts/check-db.ts",
     "seed:model": "ts-node prisma/seed-model.ts",
-    "sync:data": "ts-node -r dotenv/config scripts/sync-scraped-data.ts"
+    "sync:data": "ts-node -r dotenv/config scripts/sync-scraped-data.ts",
+    "studio": "dotenv -e .env -- prisma studio"
   },
   "keywords": [],
   "author": "",
@@ -24,17 +25,20 @@
     "@nestjs/core": "^11.1.9",
     "@nestjs/platform-express": "^11.1.9",
     "@nestjs/testing": "^11.1.9",
-    "@prisma/client": "^5.10.0",
+    "@prisma/client": "5.21.1",
     "axios": "^1.13.2",
     "dotenv": "^16.3.1",
     "mime-types": "^3.0.2",
-    "prisma": "^5.10.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.14",
+    "@types/fs-extra": "^11.0.4",
     "@types/node": "^24.10.4",
+    "dotenv-cli": "^11.0.0",
+    "fs-extra": "^11.3.3",
+    "prisma": "5.21.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }
